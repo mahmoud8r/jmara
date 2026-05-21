@@ -21,7 +21,6 @@ const C = {
   muted: "rgba(255,255,255,0.45)", green: "#22c55e", yellow: "#eab308",
 };
 
-// Each product consumes: { mandi: N, madhbi: N, lamb: N }
 const PRODUCTS = [
   { id: "whole_chicken_mandi",   label: "Whole Chicken Mandi",                        mandi: 1, madhbi: 0, lamb: 0, price: 34  },
   { id: "whole_chicken_madhbi",  label: "Whole Chicken Madhbi",                       mandi: 0, madhbi: 1, lamb: 0, price: 37  },
@@ -49,44 +48,14 @@ const SOURCE = {
 
 const TODAY = new Date().toISOString().slice(0, 10);
 
-// ── QR Modal ──────────────────────────────────────────────────────────────────
-function QRModal({ order, onClose }) {
-  const product = PRODUCTS.find(p => p.id === order.item);
-  const label = product ? product.label : order.item;
-  const text = `JAMRA ORDER\n${order.customer}\n${label} x${order.qty}${order.price ? "\n$" + order.price : ""}${order.deliveryTime ? "\n" + order.deliveryTime : ""}${order.note ? "\n" + order.note : ""}`;
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(text)}`;
-  return (
-    <div onClick={onClose} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.9)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:200, padding:16 }}>
-      <div onClick={e=>e.stopPropagation()} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:20, padding:28, maxWidth:320, width:"100%", textAlign:"center" }}>
-        <div style={{ fontSize:24, fontWeight:900, background:"linear-gradient(90deg,#DC2626,#f97316,#F5A623)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", marginBottom:4 }}>JAMRA</div>
-        <div style={{ fontSize:10, color:C.gold, letterSpacing:2, marginBottom:16 }}>THE AUTHENTIC TASTE</div>
-        <div style={{ background:"#111", borderRadius:12, padding:"12px 16px", marginBottom:16, textAlign:"left" }}>
-          <div style={{ fontSize:16, fontWeight:800 }}>{order.customer}</div>
-          <div style={{ fontSize:14, color:C.orange, marginTop:4 }}>{label} × {order.qty}</div>
-          {order.price && <div style={{ fontSize:14, color:C.gold, marginTop:4 }}>💰 ${order.price}</div>}
-          {order.deliveryTime && <div style={{ fontSize:13, color:C.gold, marginTop:4 }}>🕐 {order.deliveryTime}</div>}
-          {order.note && <div style={{ fontSize:12, color:C.muted, marginTop:4 }}>📝 {order.note}</div>}
-        </div>
-        <img src={qrUrl} alt="QR" style={{ width:180, height:180, borderRadius:12, border:`2px solid ${C.border}` }} />
-        <div style={{ fontSize:11, color:C.muted, marginTop:8 }}>Scan with Katasymbol app to print</div>
-        <button onClick={onClose} style={{ marginTop:16, width:"100%", background:"linear-gradient(135deg,#DC2626,#f97316)", border:"none", color:"#fff", padding:12, borderRadius:12, fontFamily:"inherit", fontSize:15, fontWeight:700, cursor:"pointer" }}>Close</button>
-      </div>
-    </div>
-  );
-}
-
-// ── Stock Modal ───────────────────────────────────────────────────────────────
 function StockModal({ stock, onSave, onClose }) {
   const [mandi,  setMandi]  = useState(stock.mandi  ?? "");
   const [madhbi, setMadhbi] = useState(stock.madhbi ?? "");
   const [lamb,   setLamb]   = useState(stock.lamb   ?? "");
-
-  const mn = Number(mandi)  || 0;
+  const mn = Number(mandi) || 0;
   const mb = Number(madhbi) || 0;
-  const lb = Number(lamb)   || 0;
-
+  const lb = Number(lamb) || 0;
   const inputStyle = { width:"100%", boxSizing:"border-box", background:"#111", border:`1px solid ${C.border}`, borderRadius:10, padding:"12px 14px", color:C.text, fontFamily:"inherit", fontSize:16, outline:"none", textAlign:"center" };
-
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.9)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:200, padding:16, overflowY:"auto" }}>
       <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:20, padding:24, width:"100%", maxWidth:460, maxHeight:"90vh", overflowY:"auto", margin:"auto" }}>
@@ -95,8 +64,6 @@ function StockModal({ stock, onSave, onClose }) {
           <div style={{ fontSize:18, fontWeight:900 }}>Today's Inventory — {TODAY}</div>
         </div>
         <div style={{ fontSize:12, color:C.muted, marginBottom:20 }}>Enter available quantities for today.</div>
-
-        {/* 3 inputs */}
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12, marginBottom:20 }}>
           {[
             { icon:"🔥", label:"Chicken Mandi", val:mandi, set:setMandi },
@@ -110,8 +77,6 @@ function StockModal({ stock, onSave, onClose }) {
             </div>
           ))}
         </div>
-
-        {/* Preview */}
         {(mn > 0 || mb > 0 || lb > 0) && (
           <div style={{ background:"#111", borderRadius:14, padding:16, marginBottom:20 }}>
             <div style={{ fontSize:12, color:C.green, fontWeight:700, marginBottom:12 }}>📊 Meals you can make:</div>
@@ -137,7 +102,6 @@ function StockModal({ stock, onSave, onClose }) {
             })}
           </div>
         )}
-
         <div style={{ display:"flex", gap:10 }}>
           <button onClick={() => onSave({ mandi:mn, madhbi:mb, lamb:lb })}
             style={{ flex:1, background:"linear-gradient(135deg,#DC2626,#f97316)", border:"none", color:"#fff", padding:13, borderRadius:12, fontFamily:"inherit", fontSize:15, fontWeight:800, cursor:"pointer" }}>
@@ -153,47 +117,20 @@ function StockModal({ stock, onSave, onClose }) {
   );
 }
 
-// ── Main App ──────────────────────────────────────────────────────────────────
 export default function App() {
-  const [orders,     setOrders]     = useState([]);
-  const [stock,      setStock]      = useState({});
-  const [loading,    setLoading]    = useState(true);
-  const [filter,     setFilter]     = useState("all");
-  const [showForm,   setShowForm]   = useState(false);
-  const [showStock,  setShowStock]  = useState(false);
-  const [search,     setSearch]     = useState("");
-  const [copied, setCopied] = useState(null);
-
-  const copyOrderText = (order) => {
-    const product = PRODUCTS.find(p => p.id === order.item);
-    const label = product ? product.label : order.item;
-    const subtotal = (order.price * order.qty).toFixed(2);
-    const lines = [
-      "🔥 JAMRA ORDER",
-      "─────────────────",
-      `👤 ${order.customer}`,
-      `🍽  ${label}`,
-      `📦 Qty: ${order.qty}`,
-      order.price > 0 ? `💰 Price: $${subtotal}` : null,
-      order.discount > 0 ? `🏷  Discount: -$${order.discount}` : null,
-      order.total !== undefined && order.price > 0 ? `✅ Total: $${order.total.toFixed(2)}` : null,
-      order.deliveryTime ? `🕐 Delivery: ${order.deliveryTime}` : null,
-      order.note ? `📝 Note: ${order.note}` : null,
-      "─────────────────",
-      "jamra.ca",
-    ].filter(Boolean).join("\n");
-
-    navigator.clipboard.writeText(lines).then(() => {
-      setCopied(order.id);
-      setTimeout(() => setCopied(null), 2500);
-    });
-  };
-  const [form, setForm] = useState({ customer:"", item:PRODUCTS[0].id, qty:1, price: PRODUCTS[0].price, discount:"", source:"whatsapp", note:"", deliveryDate:TODAY, deliveryTime:"" });
-
-  const handleItemChange = (itemId) => {
-    const p = PRODUCTS.find(x => x.id === itemId);
-    setForm(f => ({ ...f, item: itemId, price: p ? p.price : "" }));
-  };
+  const [orders,    setOrders]    = useState([]);
+  const [stock,     setStock]     = useState({});
+  const [loading,   setLoading]   = useState(true);
+  const [filter,    setFilter]    = useState("all");
+  const [showForm,  setShowForm]  = useState(false);
+  const [showStock, setShowStock] = useState(false);
+  const [search,    setSearch]    = useState("");
+  const [copied,    setCopied]    = useState(null);
+  const [form, setForm] = useState({
+    customer: "", item: PRODUCTS[0].id, qty: 1,
+    price: PRODUCTS[0].price, discount: "",
+    source: "whatsapp", note: "", deliveryDate: TODAY, deliveryTime: ""
+  });
 
   useEffect(() => {
     const q = query(collection(db, "orders"), orderBy("createdAt", "desc"));
@@ -219,15 +156,19 @@ export default function App() {
     setShowStock(false);
   };
 
-  // How much chicken/lamb consumed today by active orders
+  const handleItemChange = (itemId) => {
+    const p = PRODUCTS.find(x => x.id === itemId);
+    setForm(f => ({ ...f, item: itemId, price: p ? p.price : 0 }));
+  };
+
   const consumedToday = orders
     .filter(o => o.date === TODAY && o.status !== "delivered")
     .reduce((acc, o) => {
       const p = PRODUCTS.find(x => x.id === o.item);
       if (!p) return acc;
-      acc.mandi  += (p.mandi  * o.qty);
-      acc.madhbi += (p.madhbi * o.qty);
-      acc.lamb   += (p.lamb   * o.qty);
+      acc.mandi  += p.mandi  * o.qty;
+      acc.madhbi += p.madhbi * o.qty;
+      acc.lamb   += p.lamb   * o.qty;
       return acc;
     }, { mandi:0, madhbi:0, lamb:0 });
 
@@ -238,7 +179,6 @@ export default function App() {
   const pctMadhbi = stock.madhbi > 0 ? remainingMadhbi / stock.madhbi : null;
   const pctLamb   = stock.lamb   > 0 ? remainingLamb   / stock.lamb   : null;
 
-  // Max orders possible for a given product with remaining stock
   const canMake = (productId) => {
     const p = PRODUCTS.find(x => x.id === productId);
     if (!p || (!stock.mandi && !stock.madhbi && !stock.lamb)) return null;
@@ -255,9 +195,10 @@ export default function App() {
     const discount = Number(form.discount) || 0;
     const total = Math.max(0, subtotal - discount);
     await addDoc(collection(db, "orders"), {
-      ...form, qty:Number(form.qty), price:Number(form.price)||0,
-      discount, total,
-      deliveryTime, status:"pending", date:TODAY, createdAt:Date.now(),
+      customer: form.customer, item: form.item, qty: Number(form.qty),
+      price: Number(form.price) || 0, discount, total,
+      source: form.source, note: form.note,
+      deliveryTime, status: "pending", date: TODAY, createdAt: Date.now(),
     });
     setForm({ customer:"", item:PRODUCTS[0].id, qty:1, price:PRODUCTS[0].price, discount:"", source:"whatsapp", note:"", deliveryDate:TODAY, deliveryTime:"" });
     setShowForm(false);
@@ -266,6 +207,29 @@ export default function App() {
   const updateStatus = async (id, status) => await updateDoc(doc(db, "orders", id), { status });
   const deleteOrder  = async (id)         => await deleteDoc(doc(db, "orders", id));
 
+  const copyOrderText = (order) => {
+    const product = PRODUCTS.find(p => p.id === order.item);
+    const label = product ? product.label : order.item;
+    const lines = [
+      "🔥 JAMRA ORDER",
+      "─────────────────",
+      `👤 ${order.customer}`,
+      `🍽  ${label}`,
+      `📦 Qty: ${order.qty}`,
+      order.price > 0 ? `💰 Price: $${(order.price * order.qty).toFixed(2)}` : null,
+      order.discount > 0 ? `🏷  Discount: -$${Number(order.discount).toFixed(2)}` : null,
+      order.total > 0 ? `✅ Total: $${Number(order.total).toFixed(2)}` : null,
+      order.deliveryTime ? `🕐 Delivery: ${order.deliveryTime}` : null,
+      order.note ? `📝 Note: ${order.note}` : null,
+      "─────────────────",
+      "jamra.ca",
+    ].filter(Boolean).join("\n");
+    navigator.clipboard.writeText(lines).then(() => {
+      setCopied(order.id);
+      setTimeout(() => setCopied(null), 2500);
+    });
+  };
+
   const filtered = orders.filter(o =>
     (filter === "all" || o.status === filter) &&
     (o.customer.toLowerCase().includes(search.toLowerCase()) ||
@@ -273,9 +237,14 @@ export default function App() {
   );
 
   const counts = Object.fromEntries(Object.keys(STATUS).map(s => [s, orders.filter(o => o.status === s).length]));
-  const totalRevenue = filtered.filter(o => o.total).reduce((s, o) => s + o.total, 0);
+  const totalRevenue = filtered.filter(o => o.total > 0).reduce((s, o) => s + o.total, 0);
 
   const inputStyle = { width:"100%", boxSizing:"border-box", background:"#111", border:`1px solid ${C.border}`, borderRadius:10, padding:"11px 14px", color:C.text, fontFamily:"inherit", fontSize:14, outline:"none" };
+
+  // Live price preview in form
+  const formSubtotal = (Number(form.price) || 0) * (Number(form.qty) || 1);
+  const formDiscount = Number(form.discount) || 0;
+  const formTotal    = Math.max(0, formSubtotal - formDiscount);
 
   if (loading) return (
     <div style={{ fontFamily:"'Inter',sans-serif", minHeight:"100vh", background:C.black, color:C.text, display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:12 }}>
@@ -309,8 +278,8 @@ export default function App() {
 
       <div style={{ maxWidth:720, margin:"0 auto", padding:"20px 16px" }}>
 
-        {/* Inventory status bar */}
-        {stock.mandi > 0 || stock.madhbi > 0 || stock.lamb > 0 ? (
+        {/* Inventory bars */}
+        {(stock.mandi > 0 || stock.madhbi > 0 || stock.lamb > 0) ? (
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginBottom:14 }}>
             {[
               { icon:"🔥", label:"Mandi",  remaining:remainingMandi,  total:stock.mandi ||0, pct:pctMandi  },
@@ -324,7 +293,7 @@ export default function App() {
                 <div key={item.label} style={{ background:bgColor, border:`1px solid ${color}40`, borderRadius:12, padding:"12px 14px" }}>
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
                     <div style={{ fontSize:13, fontWeight:700 }}>{item.icon} {item.label}</div>
-                    <div style={{ fontSize:18, fontWeight:900, color }}>{item.remaining < 0 ? 0 : item.remaining}<span style={{ fontSize:11, color:C.muted }}>/{item.total}</span></div>
+                    <div style={{ fontSize:18, fontWeight:900, color }}>{Math.max(0,item.remaining)}<span style={{ fontSize:11, color:C.muted }}>/{item.total}</span></div>
                   </div>
                   <div style={{ background:C.border, borderRadius:6, height:6 }}>
                     <div style={{ background:color, borderRadius:6, height:6, width:`${barWidth}%`, transition:"width 0.3s" }} />
@@ -393,9 +362,9 @@ export default function App() {
                       {productLabel} • <b style={{ color:C.orange }}>×{order.qty}</b>
                       {order.price > 0 && (
                         <span>
-                          <b style={{ color:C.muted }}> • ${(order.price * order.qty).toFixed(2)}</b>
-                          {order.discount > 0 && <b style={{ color:C.red }}> -{order.discount.toFixed(2)}</b>}
-                          {order.total !== undefined && <b style={{ color:C.gold }}> = ${order.total.toFixed(2)}</b>}
+                          <span style={{ color:C.muted }}> • ${(order.price * order.qty).toFixed(2)}</span>
+                          {order.discount > 0 && <span style={{ color:C.red }}> −${Number(order.discount).toFixed(2)}</span>}
+                          {order.total > 0 && <b style={{ color:C.gold }}> = ${Number(order.total).toFixed(2)}</b>}
                         </span>
                       )}
                     </div>
@@ -411,10 +380,13 @@ export default function App() {
                     <span style={{ background:st.bg, color:st.color, padding:"4px 10px", borderRadius:20, fontSize:11, fontWeight:700, whiteSpace:"nowrap", border:`1px solid ${st.color}40` }}>{st.icon} {st.label}</span>
                     <div style={{ display:"flex", gap:6 }}>
                       <button onClick={() => copyOrderText(order)}
-                        style={{ background: copied === order.id ? "#002a0f" : "#1a1500", border:`1px solid ${copied === order.id ? C.green : C.gold}50`, color: copied === order.id ? C.green : C.gold, padding:"4px 10px", borderRadius:8, fontSize:11, cursor:"pointer", fontFamily:"inherit", fontWeight:700, transition:"all 0.2s" }}>
-                        {copied === order.id ? "✅ Copied!" : "📋 Copy"}
+                        style={{ background:copied===order.id ? "#002a0f" : "#1a1500", border:`1px solid ${copied===order.id ? C.green : C.gold}50`, color:copied===order.id ? C.green : C.gold, padding:"4px 10px", borderRadius:8, fontSize:11, cursor:"pointer", fontFamily:"inherit", fontWeight:700, transition:"all 0.2s" }}>
+                        {copied===order.id ? "✅ Copied!" : "📋 Copy"}
                       </button>
-                      <button onClick={() => deleteOrder(order.id)} style={{ background:"#1a0000", border:"1px solid rgba(220,38,38,0.3)", color:"#f87171", padding:"4px 10px", borderRadius:8, fontSize:11, cursor:"pointer", fontFamily:"inherit" }}>Delete</button>
+                      <button onClick={() => deleteOrder(order.id)}
+                        style={{ background:"#1a0000", border:"1px solid rgba(220,38,38,0.3)", color:"#f87171", padding:"4px 10px", borderRadius:8, fontSize:11, cursor:"pointer", fontFamily:"inherit" }}>
+                        Delete
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -432,8 +404,7 @@ export default function App() {
         </div>
       </div>
 
-
-      {showStock  && <StockModal stock={stock}   onSave={saveStock} onClose={() => setShowStock(false)} />}
+      {showStock && <StockModal stock={stock} onSave={saveStock} onClose={() => setShowStock(false)} />}
 
       {/* New Order Modal */}
       {showForm && (
@@ -444,22 +415,25 @@ export default function App() {
               <div style={{ fontSize:18, fontWeight:900 }}>New Order</div>
             </div>
 
+            {/* Customer */}
             <div style={{ marginBottom:14 }}>
               <label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:6 }}>Customer Name *</label>
               <input value={form.customer} placeholder="e.g. John Smith" onChange={e => setForm({ ...form, customer:e.target.value })} style={inputStyle} />
             </div>
 
+            {/* Item */}
             <div style={{ marginBottom:14 }}>
               <label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:6 }}>Item *</label>
               <select value={form.item} onChange={e => handleItemChange(e.target.value)} style={inputStyle}>
                 {PRODUCTS.map(p => {
                   const avail = canMake(p.id);
-                  const suffix = avail === null ? "" : avail === 0 ? " 🚫 UNAVAILABLE" : avail <= 2 ? ` ⚠️ only ${avail} left` : ` ✅ ${avail} available`;
+                  const suffix = avail === null ? "" : avail === 0 ? " 🚫 UNAVAILABLE" : avail <= 2 ? ` ⚠️ only ${avail} left` : ` ✅ ${avail} avail`;
                   return <option key={p.id} value={p.id} style={{ background:"#111" }}>{p.label} — ${p.price}{suffix}</option>;
                 })}
               </select>
             </div>
 
+            {/* Qty + Price + Discount */}
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginBottom:14 }}>
               <div>
                 <label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:6 }}>Quantity</label>
@@ -471,23 +445,20 @@ export default function App() {
               </div>
               <div>
                 <label style={{ fontSize:12, color:C.red, display:"block", marginBottom:6 }}>🏷 Discount ($)</label>
-                <input type="number" min="0" value={form.discount} placeholder="0" onChange={e => setForm({ ...form, discount:e.target.value })} style={{ ...inputStyle, borderColor: form.discount > 0 ? C.red : C.border }} />
+                <input type="number" min="0" value={form.discount} placeholder="0" onChange={e => setForm({ ...form, discount:e.target.value })} style={{ ...inputStyle, borderColor:formDiscount > 0 ? C.red : C.border }} />
               </div>
             </div>
 
             {/* Total preview */}
-            {(form.price > 0 || form.qty > 1) && (
-              <div style={{ background:"#111", border:`1px solid ${C.gold}30`, borderRadius:10, padding:"10px 14px", marginBottom:14, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                <div style={{ fontSize:12, color:C.muted }}>
-                  ${Number(form.price)||0} × {form.qty}
-                  {Number(form.discount) > 0 && <span style={{ color:C.red }}> − ${Number(form.discount)}</span>}
-                </div>
-                <div style={{ fontSize:18, fontWeight:900, color:C.gold }}>
-                  ${Math.max(0, (Number(form.price)||0) * Number(form.qty) - (Number(form.discount)||0)).toFixed(2)}
-                </div>
+            <div style={{ background:"#111", border:`1px solid ${C.gold}30`, borderRadius:10, padding:"10px 14px", marginBottom:14, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+              <div style={{ fontSize:12, color:C.muted }}>
+                ${Number(form.price)||0} × {form.qty}
+                {formDiscount > 0 && <span style={{ color:C.red }}> − ${formDiscount}</span>}
               </div>
-            )}
+              <div style={{ fontSize:20, fontWeight:900, color:C.gold }}>${formTotal.toFixed(2)}</div>
+            </div>
 
+            {/* Source */}
             <div style={{ marginBottom:14 }}>
               <label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:6 }}>Order Source</label>
               <select value={form.source} onChange={e => setForm({ ...form, source:e.target.value })} style={inputStyle}>
@@ -495,6 +466,7 @@ export default function App() {
               </select>
             </div>
 
+            {/* Delivery */}
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:14 }}>
               <div>
                 <label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:6 }}>🗓 Delivery Date</label>
@@ -506,6 +478,7 @@ export default function App() {
               </div>
             </div>
 
+            {/* Note */}
             <div style={{ marginBottom:20 }}>
               <label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:6 }}>Note (optional)</label>
               <input value={form.note} placeholder="e.g. extra spicy, no onions..." onChange={e => setForm({ ...form, note:e.target.value })} style={inputStyle} />
