@@ -21,17 +21,16 @@ const C = {
   muted: "rgba(255,255,255,0.45)", green: "#22c55e", yellow: "#eab308",
 };
 
-// Each product consumes: { chicken: N, lamb: N }
-// chicken = whole chicken, lamb = lamb pieces
+// Each product consumes: { mandi: N, madhbi: N, lamb: N }
 const PRODUCTS = [
-  { id: "whole_chicken_mandi",   label: "Whole Chicken Mandi",                       chicken: 1, lamb: 0 },
-  { id: "whole_chicken_madhbi",  label: "Whole Chicken Madhbi",                      chicken: 1, lamb: 0 },
-  { id: "lamb_plate",            label: "Lamb Plate",                                chicken: 0, lamb: 3 },
-  { id: "family_chicken_mandi",  label: "Family Meal — Chicken Mandi",               chicken: 2, lamb: 0 },
-  { id: "family_chicken_madhbi", label: "Family Meal — Chicken Madhbi",              chicken: 2, lamb: 0 },
-  { id: "family_mix_chicken",    label: "Family Meal — Mix Chicken",                 chicken: 2, lamb: 0 },
-  { id: "family_mix_sm",         label: "Family Meal — Mix Lamb & Chicken (Medium)", chicken: 1, lamb: 4 },
-  { id: "family_mix_lg",         label: "Family Meal — Mix Lamb & Chicken (Large)",  chicken: 2, lamb: 6 },
+  { id: "whole_chicken_mandi",   label: "Whole Chicken Mandi",                       mandi: 1, madhbi: 0, lamb: 0 },
+  { id: "whole_chicken_madhbi",  label: "Whole Chicken Madhbi",                      mandi: 0, madhbi: 1, lamb: 0 },
+  { id: "lamb_plate",            label: "Lamb Plate",                                mandi: 0, madhbi: 0, lamb: 3 },
+  { id: "family_chicken_mandi",  label: "Family Meal — Chicken Mandi",               mandi: 2, madhbi: 0, lamb: 0 },
+  { id: "family_chicken_madhbi", label: "Family Meal — Chicken Madhbi",              mandi: 0, madhbi: 2, lamb: 0 },
+  { id: "family_mix_chicken",    label: "Family Meal — Mix Chicken",                 mandi: 1, madhbi: 1, lamb: 0 },
+  { id: "family_mix_sm",         label: "Family Meal — Mix Lamb & Chicken (Medium)", mandi: 1, madhbi: 0, lamb: 4 },
+  { id: "family_mix_lg",         label: "Family Meal — Mix Lamb & Chicken (Large)",  mandi: 2, madhbi: 0, lamb: 6 },
 ];
 
 const STATUS = {
@@ -77,57 +76,61 @@ function QRModal({ order, onClose }) {
 
 // ── Stock Modal ───────────────────────────────────────────────────────────────
 function StockModal({ stock, onSave, onClose }) {
-  const [chicken, setChicken] = useState(stock.chicken ?? "");
-  const [lamb,    setLamb]    = useState(stock.lamb    ?? "");
+  const [mandi,  setMandi]  = useState(stock.mandi  ?? "");
+  const [madhbi, setMadhbi] = useState(stock.madhbi ?? "");
+  const [lamb,   setLamb]   = useState(stock.lamb   ?? "");
 
-  // Preview: how many of each meal can be made
-  const ch = Number(chicken) || 0;
-  const lb = Number(lamb)    || 0;
+  const mn = Number(mandi)  || 0;
+  const mb = Number(madhbi) || 0;
+  const lb = Number(lamb)   || 0;
 
   const inputStyle = { width:"100%", boxSizing:"border-box", background:"#111", border:`1px solid ${C.border}`, borderRadius:10, padding:"12px 14px", color:C.text, fontFamily:"inherit", fontSize:16, outline:"none", textAlign:"center" };
 
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.9)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:200, padding:16, overflowY:"auto" }}>
-      <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:20, padding:24, width:"100%", maxWidth:440, maxHeight:"90vh", overflowY:"auto", margin:"auto" }}>
+      <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:20, padding:24, width:"100%", maxWidth:460, maxHeight:"90vh", overflowY:"auto", margin:"auto" }}>
         <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:6 }}>
           <div style={{ width:4, height:24, background:"linear-gradient(#DC2626,#f97316)", borderRadius:4 }} />
           <div style={{ fontSize:18, fontWeight:900 }}>Today's Inventory — {TODAY}</div>
         </div>
-        <div style={{ fontSize:12, color:C.muted, marginBottom:20 }}>Enter the number of whole chickens and lamb pieces available today.</div>
+        <div style={{ fontSize:12, color:C.muted, marginBottom:20 }}>Enter available quantities for today.</div>
 
-        {/* Inputs */}
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:20 }}>
-          <div style={{ background:"#111", border:`1px solid ${C.border}`, borderRadius:14, padding:16, textAlign:"center" }}>
-            <div style={{ fontSize:32, marginBottom:6 }}>🐔</div>
-            <div style={{ fontSize:13, color:C.gold, fontWeight:700, marginBottom:10 }}>Whole Chickens</div>
-            <input type="number" min="0" value={chicken} placeholder="0" onChange={e => setChicken(e.target.value)} style={inputStyle} />
-          </div>
-          <div style={{ background:"#111", border:`1px solid ${C.border}`, borderRadius:14, padding:16, textAlign:"center" }}>
-            <div style={{ fontSize:32, marginBottom:6 }}>🥩</div>
-            <div style={{ fontSize:13, color:C.gold, fontWeight:700, marginBottom:10 }}>Lamb Pieces</div>
-            <input type="number" min="0" value={lamb} placeholder="0" onChange={e => setLamb(e.target.value)} style={inputStyle} />
-          </div>
+        {/* 3 inputs */}
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12, marginBottom:20 }}>
+          {[
+            { icon:"🔥", label:"Chicken Mandi", val:mandi, set:setMandi },
+            { icon:"🐔", label:"Chicken Madhbi", val:madhbi, set:setMadhbi },
+            { icon:"🥩", label:"Lamb Pieces",   val:lamb,   set:setLamb },
+          ].map(f => (
+            <div key={f.label} style={{ background:"#111", border:`1px solid ${C.border}`, borderRadius:14, padding:"14px 10px", textAlign:"center" }}>
+              <div style={{ fontSize:28, marginBottom:6 }}>{f.icon}</div>
+              <div style={{ fontSize:11, color:C.gold, fontWeight:700, marginBottom:10, lineHeight:1.3 }}>{f.label}</div>
+              <input type="number" min="0" value={f.val} placeholder="0" onChange={e => f.set(e.target.value)} style={inputStyle} />
+            </div>
+          ))}
         </div>
 
-        {/* Preview table */}
-        {(ch > 0 || lb > 0) && (
+        {/* Preview */}
+        {(mn > 0 || mb > 0 || lb > 0) && (
           <div style={{ background:"#111", borderRadius:14, padding:16, marginBottom:20 }}>
             <div style={{ fontSize:12, color:C.green, fontWeight:700, marginBottom:12 }}>📊 Meals you can make:</div>
             {PRODUCTS.map(p => {
-              const maxByChicken = p.chicken > 0 ? Math.floor(ch / p.chicken) : Infinity;
-              const maxByLamb    = p.lamb    > 0 ? Math.floor(lb / p.lamb)    : Infinity;
-              const canMake = Math.min(maxByChicken, maxByLamb);
+              const byMandi  = p.mandi  > 0 ? Math.floor(mn / p.mandi)  : Infinity;
+              const byMadhbi = p.madhbi > 0 ? Math.floor(mb / p.madhbi) : Infinity;
+              const byLamb   = p.lamb   > 0 ? Math.floor(lb / p.lamb)   : Infinity;
+              const canMake  = Math.min(byMandi, byMadhbi, byLamb);
               const color = canMake === 0 ? C.red : canMake <= 2 ? C.yellow : C.green;
               const recipe = [];
-              if (p.chicken > 0) recipe.push(`${p.chicken} chicken`);
-              if (p.lamb > 0)    recipe.push(`${p.lamb} lamb`);
+              if (p.mandi  > 0) recipe.push(`${p.mandi} mandi`);
+              if (p.madhbi > 0) recipe.push(`${p.madhbi} madhbi`);
+              if (p.lamb   > 0) recipe.push(`${p.lamb} lamb`);
               return (
                 <div key={p.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 0", borderBottom:`1px solid ${C.border}` }}>
                   <div>
                     <div style={{ fontSize:13, fontWeight:600 }}>{p.label}</div>
                     <div style={{ fontSize:11, color:C.muted }}>uses: {recipe.join(" + ")}</div>
                   </div>
-                  <div style={{ fontSize:20, fontWeight:900, color, minWidth:36, textAlign:"right" }}>{canMake === Infinity ? "∞" : canMake}</div>
+                  <div style={{ fontSize:20, fontWeight:900, color, minWidth:36, textAlign:"right" }}>{canMake === Infinity ? "—" : canMake}</div>
                 </div>
               );
             })}
@@ -135,7 +138,7 @@ function StockModal({ stock, onSave, onClose }) {
         )}
 
         <div style={{ display:"flex", gap:10 }}>
-          <button onClick={() => onSave({ chicken: Number(chicken)||0, lamb: Number(lamb)||0 })}
+          <button onClick={() => onSave({ mandi:mn, madhbi:mb, lamb:lb })}
             style={{ flex:1, background:"linear-gradient(135deg,#DC2626,#f97316)", border:"none", color:"#fff", padding:13, borderRadius:12, fontFamily:"inherit", fontSize:15, fontWeight:800, cursor:"pointer" }}>
             Save Inventory
           </button>
@@ -191,23 +194,27 @@ export default function App() {
     .reduce((acc, o) => {
       const p = PRODUCTS.find(x => x.id === o.item);
       if (!p) return acc;
-      acc.chicken += (p.chicken * o.qty);
-      acc.lamb    += (p.lamb    * o.qty);
+      acc.mandi  += (p.mandi  * o.qty);
+      acc.madhbi += (p.madhbi * o.qty);
+      acc.lamb   += (p.lamb   * o.qty);
       return acc;
-    }, { chicken:0, lamb:0 });
+    }, { mandi:0, madhbi:0, lamb:0 });
 
-  const remainingChicken = (stock.chicken || 0) - consumedToday.chicken;
-  const remainingLamb    = (stock.lamb    || 0) - consumedToday.lamb;
-  const pctChicken = stock.chicken > 0 ? remainingChicken / stock.chicken : null;
-  const pctLamb    = stock.lamb    > 0 ? remainingLamb    / stock.lamb    : null;
+  const remainingMandi  = (stock.mandi  || 0) - consumedToday.mandi;
+  const remainingMadhbi = (stock.madhbi || 0) - consumedToday.madhbi;
+  const remainingLamb   = (stock.lamb   || 0) - consumedToday.lamb;
+  const pctMandi  = stock.mandi  > 0 ? remainingMandi  / stock.mandi  : null;
+  const pctMadhbi = stock.madhbi > 0 ? remainingMadhbi / stock.madhbi : null;
+  const pctLamb   = stock.lamb   > 0 ? remainingLamb   / stock.lamb   : null;
 
   // Max orders possible for a given product with remaining stock
   const canMake = (productId) => {
     const p = PRODUCTS.find(x => x.id === productId);
-    if (!p || (!stock.chicken && !stock.lamb)) return null;
-    const byChicken = p.chicken > 0 ? Math.floor(remainingChicken / p.chicken) : Infinity;
-    const byLamb    = p.lamb    > 0 ? Math.floor(remainingLamb    / p.lamb)    : Infinity;
-    return Math.min(byChicken, byLamb);
+    if (!p || (!stock.mandi && !stock.madhbi && !stock.lamb)) return null;
+    const byMandi  = p.mandi  > 0 ? Math.floor(remainingMandi  / p.mandi)  : Infinity;
+    const byMadhbi = p.madhbi > 0 ? Math.floor(remainingMadhbi / p.madhbi) : Infinity;
+    const byLamb   = p.lamb   > 0 ? Math.floor(remainingLamb   / p.lamb)   : Infinity;
+    return Math.min(byMandi, byMadhbi, byLamb);
   };
 
   const addOrder = async () => {
@@ -268,11 +275,12 @@ export default function App() {
       <div style={{ maxWidth:720, margin:"0 auto", padding:"20px 16px" }}>
 
         {/* Inventory status bar */}
-        {stock.chicken > 0 || stock.lamb > 0 ? (
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:14 }}>
+        {stock.mandi > 0 || stock.madhbi > 0 || stock.lamb > 0 ? (
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginBottom:14 }}>
             {[
-              { icon:"🐔", label:"Chickens", remaining:remainingChicken, total:stock.chicken||0, pct:pctChicken },
-              { icon:"🥩", label:"Lamb Pieces", remaining:remainingLamb, total:stock.lamb||0, pct:pctLamb },
+              { icon:"🔥", label:"Mandi",  remaining:remainingMandi,  total:stock.mandi ||0, pct:pctMandi  },
+              { icon:"🐔", label:"Madhbi", remaining:remainingMadhbi, total:stock.madhbi||0, pct:pctMadhbi },
+              { icon:"🥩", label:"Lamb",   remaining:remainingLamb,   total:stock.lamb  ||0, pct:pctLamb   },
             ].map(item => {
               const color = item.remaining <= 0 ? C.red : item.pct <= 0.2 ? C.yellow : C.green;
               const bgColor = item.remaining <= 0 ? "#2a0000" : item.pct <= 0.2 ? "#1a1400" : "#0d1a0d";
