@@ -23,14 +23,15 @@ const C = {
 
 // Each product consumes: { mandi: N, madhbi: N, lamb: N }
 const PRODUCTS = [
-  { id: "whole_chicken_mandi",   label: "Whole Chicken Mandi",                       mandi: 1, madhbi: 0, lamb: 0 },
-  { id: "whole_chicken_madhbi",  label: "Whole Chicken Madhbi",                      mandi: 0, madhbi: 1, lamb: 0 },
-  { id: "lamb_plate",            label: "Lamb Plate",                                mandi: 0, madhbi: 0, lamb: 3 },
-  { id: "family_chicken_mandi",  label: "Family Meal — Chicken Mandi",               mandi: 2, madhbi: 0, lamb: 0 },
-  { id: "family_chicken_madhbi", label: "Family Meal — Chicken Madhbi",              mandi: 0, madhbi: 2, lamb: 0 },
-  { id: "family_mix_chicken",    label: "Family Meal — Mix Chicken",                 mandi: 1, madhbi: 1, lamb: 0 },
-  { id: "family_mix_sm",         label: "Family Meal — Mix Lamb & Chicken (Medium)", mandi: 1, madhbi: 0, lamb: 4 },
-  { id: "family_mix_lg",         label: "Family Meal — Mix Lamb & Chicken (Large)",  mandi: 2, madhbi: 0, lamb: 6 },
+  { id: "whole_chicken_mandi",   label: "Whole Chicken Mandi",                        mandi: 1, madhbi: 0, lamb: 0, price: 34  },
+  { id: "whole_chicken_madhbi",  label: "Whole Chicken Madhbi",                       mandi: 0, madhbi: 1, lamb: 0, price: 37  },
+  { id: "lamb_plate",            label: "Lamb Plate (3 pcs)",                         mandi: 0, madhbi: 0, lamb: 3, price: 24  },
+  { id: "family_chicken_mandi",  label: "Family Meal — Chicken Mandi",                mandi: 2, madhbi: 0, lamb: 0, price: 67  },
+  { id: "family_chicken_madhbi", label: "Family Meal — Chicken Madhbi",               mandi: 0, madhbi: 2, lamb: 0, price: 72  },
+  { id: "family_mix_chicken",    label: "Family Meal — Mix Chicken",                  mandi: 1, madhbi: 1, lamb: 0, price: 70  },
+  { id: "family_mix_sm",         label: "Family Meal — Mix Lamb & Chicken (Medium)",  mandi: 1, madhbi: 0, lamb: 4, price: 80  },
+  { id: "family_mix_lg",         label: "Family Meal — Mix Lamb & Chicken (Large)",   mandi: 2, madhbi: 0, lamb: 8, price: 150 },
+  { id: "family_lamb",           label: "Family Lamb Meal",                           mandi: 0, madhbi: 0, lamb: 6, price: 100 },
 ];
 
 const STATUS = {
@@ -161,8 +162,38 @@ export default function App() {
   const [showForm,   setShowForm]   = useState(false);
   const [showStock,  setShowStock]  = useState(false);
   const [search,     setSearch]     = useState("");
-  const [qrOrder,    setQrOrder]    = useState(null);
-  const [form, setForm] = useState({ customer:"", item:PRODUCTS[0].id, qty:1, price:"", source:"whatsapp", note:"", deliveryDate:TODAY, deliveryTime:"" });
+  const [copied, setCopied] = useState(null);
+
+  const copyOrderText = (order) => {
+    const product = PRODUCTS.find(p => p.id === order.item);
+    const label = product ? product.label : order.item;
+    const subtotal = (order.price * order.qty).toFixed(2);
+    const lines = [
+      "🔥 JAMRA ORDER",
+      "─────────────────",
+      `👤 ${order.customer}`,
+      `🍽  ${label}`,
+      `📦 Qty: ${order.qty}`,
+      order.price > 0 ? `💰 Price: $${subtotal}` : null,
+      order.discount > 0 ? `🏷  Discount: -$${order.discount}` : null,
+      order.total !== undefined && order.price > 0 ? `✅ Total: $${order.total.toFixed(2)}` : null,
+      order.deliveryTime ? `🕐 Delivery: ${order.deliveryTime}` : null,
+      order.note ? `📝 Note: ${order.note}` : null,
+      "─────────────────",
+      "jamra.ca",
+    ].filter(Boolean).join("\n");
+
+    navigator.clipboard.writeText(lines).then(() => {
+      setCopied(order.id);
+      setTimeout(() => setCopied(null), 2500);
+    });
+  };
+  const [form, setForm] = useState({ customer:"", item:PRODUCTS[0].id, qty:1, price: PRODUCTS[0].price, discount:"", source:"whatsapp", note:"", deliveryDate:TODAY, deliveryTime:"" });
+
+  const handleItemChange = (itemId) => {
+    const p = PRODUCTS.find(x => x.id === itemId);
+    setForm(f => ({ ...f, item: itemId, price: p ? p.price : "" }));
+  };
 
   useEffect(() => {
     const q = query(collection(db, "orders"), orderBy("createdAt", "desc"));
@@ -220,11 +251,15 @@ export default function App() {
   const addOrder = async () => {
     if (!form.customer || !form.item) return;
     const deliveryTime = [form.deliveryDate, form.deliveryTime].filter(Boolean).join(" ");
+    const subtotal = Number(form.price) * Number(form.qty);
+    const discount = Number(form.discount) || 0;
+    const total = Math.max(0, subtotal - discount);
     await addDoc(collection(db, "orders"), {
-      ...form, qty:Number(form.qty), price:form.price ? Number(form.price) : null,
+      ...form, qty:Number(form.qty), price:Number(form.price)||0,
+      discount, total,
       deliveryTime, status:"pending", date:TODAY, createdAt:Date.now(),
     });
-    setForm({ customer:"", item:PRODUCTS[0].id, qty:1, price:"", source:"whatsapp", note:"", deliveryDate:TODAY, deliveryTime:"" });
+    setForm({ customer:"", item:PRODUCTS[0].id, qty:1, price:PRODUCTS[0].price, discount:"", source:"whatsapp", note:"", deliveryDate:TODAY, deliveryTime:"" });
     setShowForm(false);
   };
 
@@ -238,7 +273,7 @@ export default function App() {
   );
 
   const counts = Object.fromEntries(Object.keys(STATUS).map(s => [s, orders.filter(o => o.status === s).length]));
-  const totalRevenue = filtered.filter(o => o.price).reduce((s, o) => s + o.price * o.qty, 0);
+  const totalRevenue = filtered.filter(o => o.total).reduce((s, o) => s + o.total, 0);
 
   const inputStyle = { width:"100%", boxSizing:"border-box", background:"#111", border:`1px solid ${C.border}`, borderRadius:10, padding:"11px 14px", color:C.text, fontFamily:"inherit", fontSize:14, outline:"none" };
 
@@ -356,7 +391,13 @@ export default function App() {
                     <div style={{ fontWeight:800, fontSize:16 }}>{order.customer}</div>
                     <div style={{ color:C.muted, fontSize:13, marginTop:3 }}>
                       {productLabel} • <b style={{ color:C.orange }}>×{order.qty}</b>
-                      {order.price && <b style={{ color:C.gold }}> • ${(order.price * order.qty).toFixed(2)}</b>}
+                      {order.price > 0 && (
+                        <span>
+                          <b style={{ color:C.muted }}> • ${(order.price * order.qty).toFixed(2)}</b>
+                          {order.discount > 0 && <b style={{ color:C.red }}> -{order.discount.toFixed(2)}</b>}
+                          {order.total !== undefined && <b style={{ color:C.gold }}> = ${order.total.toFixed(2)}</b>}
+                        </span>
+                      )}
                     </div>
                     {order.note && <div style={{ color:C.muted, fontSize:12, marginTop:4 }}>📝 {order.note}</div>}
                     {order.deliveryTime && (
@@ -369,7 +410,10 @@ export default function App() {
                   <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:6 }}>
                     <span style={{ background:st.bg, color:st.color, padding:"4px 10px", borderRadius:20, fontSize:11, fontWeight:700, whiteSpace:"nowrap", border:`1px solid ${st.color}40` }}>{st.icon} {st.label}</span>
                     <div style={{ display:"flex", gap:6 }}>
-                      <button onClick={() => setQrOrder(order)} style={{ background:"#1a1500", border:`1px solid ${C.gold}50`, color:C.gold, padding:"4px 10px", borderRadius:8, fontSize:11, cursor:"pointer", fontFamily:"inherit", fontWeight:700 }}>🔲 QR</button>
+                      <button onClick={() => copyOrderText(order)}
+                        style={{ background: copied === order.id ? "#002a0f" : "#1a1500", border:`1px solid ${copied === order.id ? C.green : C.gold}50`, color: copied === order.id ? C.green : C.gold, padding:"4px 10px", borderRadius:8, fontSize:11, cursor:"pointer", fontFamily:"inherit", fontWeight:700, transition:"all 0.2s" }}>
+                        {copied === order.id ? "✅ Copied!" : "📋 Copy"}
+                      </button>
                       <button onClick={() => deleteOrder(order.id)} style={{ background:"#1a0000", border:"1px solid rgba(220,38,38,0.3)", color:"#f87171", padding:"4px 10px", borderRadius:8, fontSize:11, cursor:"pointer", fontFamily:"inherit" }}>Delete</button>
                     </div>
                   </div>
@@ -388,7 +432,7 @@ export default function App() {
         </div>
       </div>
 
-      {qrOrder    && <QRModal    order={qrOrder} onClose={() => setQrOrder(null)} />}
+
       {showStock  && <StockModal stock={stock}   onSave={saveStock} onClose={() => setShowStock(false)} />}
 
       {/* New Order Modal */}
@@ -407,25 +451,42 @@ export default function App() {
 
             <div style={{ marginBottom:14 }}>
               <label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:6 }}>Item *</label>
-              <select value={form.item} onChange={e => setForm({ ...form, item:e.target.value })} style={inputStyle}>
+              <select value={form.item} onChange={e => handleItemChange(e.target.value)} style={inputStyle}>
                 {PRODUCTS.map(p => {
                   const avail = canMake(p.id);
                   const suffix = avail === null ? "" : avail === 0 ? " 🚫 UNAVAILABLE" : avail <= 2 ? ` ⚠️ only ${avail} left` : ` ✅ ${avail} available`;
-                  return <option key={p.id} value={p.id} style={{ background:"#111" }}>{p.label}{suffix}</option>;
+                  return <option key={p.id} value={p.id} style={{ background:"#111" }}>{p.label} — ${p.price}{suffix}</option>;
                 })}
               </select>
             </div>
 
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:14 }}>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginBottom:14 }}>
               <div>
                 <label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:6 }}>Quantity</label>
                 <input type="number" min="1" value={form.qty} onChange={e => setForm({ ...form, qty:e.target.value })} style={inputStyle} />
               </div>
               <div>
                 <label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:6 }}>💰 Price ($)</label>
-                <input type="number" value={form.price} placeholder="0.00" onChange={e => setForm({ ...form, price:e.target.value })} style={inputStyle} />
+                <input type="number" value={form.price} onChange={e => setForm({ ...form, price:e.target.value })} style={inputStyle} />
+              </div>
+              <div>
+                <label style={{ fontSize:12, color:C.red, display:"block", marginBottom:6 }}>🏷 Discount ($)</label>
+                <input type="number" min="0" value={form.discount} placeholder="0" onChange={e => setForm({ ...form, discount:e.target.value })} style={{ ...inputStyle, borderColor: form.discount > 0 ? C.red : C.border }} />
               </div>
             </div>
+
+            {/* Total preview */}
+            {(form.price > 0 || form.qty > 1) && (
+              <div style={{ background:"#111", border:`1px solid ${C.gold}30`, borderRadius:10, padding:"10px 14px", marginBottom:14, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                <div style={{ fontSize:12, color:C.muted }}>
+                  ${Number(form.price)||0} × {form.qty}
+                  {Number(form.discount) > 0 && <span style={{ color:C.red }}> − ${Number(form.discount)}</span>}
+                </div>
+                <div style={{ fontSize:18, fontWeight:900, color:C.gold }}>
+                  ${Math.max(0, (Number(form.price)||0) * Number(form.qty) - (Number(form.discount)||0)).toFixed(2)}
+                </div>
+              </div>
+            )}
 
             <div style={{ marginBottom:14 }}>
               <label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:6 }}>Order Source</label>
