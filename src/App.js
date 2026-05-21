@@ -211,18 +211,11 @@ export default function App() {
     const product = PRODUCTS.find(p => p.id === order.item);
     const label = product ? product.label : order.item;
     const lines = [
-      "🔥 JAMRA ORDER",
-      "─────────────────",
-      `👤 ${order.customer}`,
-      `🍽  ${label}`,
-      `📦 Qty: ${order.qty}`,
-      order.price > 0 ? `💰 Price: $${(order.price * order.qty).toFixed(2)}` : null,
-      order.discount > 0 ? `🏷  Discount: -$${Number(order.discount).toFixed(2)}` : null,
-      order.total > 0 ? `✅ Total: $${Number(order.total).toFixed(2)}` : null,
-      order.deliveryTime ? `🕐 Delivery: ${order.deliveryTime}` : null,
-      order.note ? `📝 Note: ${order.note}` : null,
-      "─────────────────",
-      "jamra.ca",
+      "JAMRA — " + order.customer,
+      label + " x" + order.qty,
+      order.price > 0 ? "Total: $" + Number(order.total || order.price * order.qty).toFixed(2) + (order.discount > 0 ? " (disc: $" + Number(order.discount).toFixed(2) + ")" : "") : null,
+      order.deliveryTime ? "Delivery: " + order.deliveryTime : null,
+      order.note ? "Note: " + order.note : null,
     ].filter(Boolean).join("\n");
     navigator.clipboard.writeText(lines).then(() => {
       setCopied(order.id);
@@ -346,61 +339,103 @@ export default function App() {
           </div>
         )}
 
-        {/* Orders list */}
-        <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-          {filtered.map(order => {
-            const st = STATUS[order.status];
-            const src = SOURCE[order.source];
-            const product = PRODUCTS.find(p => p.id === order.item);
-            const productLabel = product?.label || order.item;
-            return (
-              <div key={order.id} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:16, padding:16, borderLeft:`3px solid ${st.color}` }}>
-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
-                  <div style={{ flex:1 }}>
-                    <div style={{ fontWeight:800, fontSize:16 }}>{order.customer}</div>
-                    <div style={{ color:C.muted, fontSize:13, marginTop:3 }}>
-                      {productLabel} • <b style={{ color:C.orange }}>×{order.qty}</b>
-                      {order.price > 0 && (
-                        <span>
-                          <span style={{ color:C.muted }}> • ${(order.price * order.qty).toFixed(2)}</span>
-                          {order.discount > 0 && <span style={{ color:C.red }}> −${Number(order.discount).toFixed(2)}</span>}
-                          {order.total > 0 && <b style={{ color:C.gold }}> = ${Number(order.total).toFixed(2)}</b>}
-                        </span>
+        {/* Orders list - grouped by customer */}
+        <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+          {(() => {
+            // Group filtered orders by customer name
+            const groups = {};
+            filtered.forEach(order => {
+              const key = order.customer.toLowerCase().trim();
+              if (!groups[key]) groups[key] = { customer: order.customer, orders: [] };
+              groups[key].orders.push(order);
+            });
+
+            return Object.values(groups).map(group => {
+              const customerTotal = group.orders.filter(o => o.total > 0).reduce((s, o) => s + o.total, 0);
+              const hasMultiple = group.orders.length > 1;
+              // Overall status: worst status wins (pending > inProgress > ready > delivered)
+              const statusPriority = { pending:0, inProgress:1, ready:2, delivered:3 };
+              const worstStatus = group.orders.reduce((w, o) => statusPriority[o.status] < statusPriority[w] ? o.status : w, "delivered");
+              const groupSt = STATUS[worstStatus];
+
+              return (
+                <div key={group.customer} style={{ background:C.card, border:`1px solid ${hasMultiple ? C.orange+"60" : C.border}`, borderRadius:16, overflow:"hidden", borderLeft:`3px solid ${groupSt.color}` }}>
+                  
+                  {/* Customer header */}
+                  <div style={{ padding:"12px 16px", borderBottom:`1px solid ${C.border}`, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                    <div>
+                      <div style={{ fontWeight:900, fontSize:17 }}>👤 {group.customer}</div>
+                      {hasMultiple && (
+                        <div style={{ fontSize:11, color:C.orange, marginTop:2, fontWeight:700 }}>
+                          {group.orders.length} orders
+                        </div>
                       )}
                     </div>
-                    {order.note && <div style={{ color:C.muted, fontSize:12, marginTop:4 }}>📝 {order.note}</div>}
-                    {order.deliveryTime && (
-                      <div style={{ display:"inline-flex", alignItems:"center", gap:5, background:"#2a1500", border:`1px solid ${C.orange}40`, borderRadius:8, padding:"3px 10px", marginTop:6, fontSize:12, fontWeight:700, color:C.gold }}>
-                        🕐 {order.deliveryTime}
-                      </div>
-                    )}
-                    <div style={{ color:"rgba(255,255,255,0.2)", fontSize:11, marginTop:6 }}>{src?.icon} {src?.label} • {order.date}</div>
-                  </div>
-                  <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:6 }}>
-                    <span style={{ background:st.bg, color:st.color, padding:"4px 10px", borderRadius:20, fontSize:11, fontWeight:700, whiteSpace:"nowrap", border:`1px solid ${st.color}40` }}>{st.icon} {st.label}</span>
-                    <div style={{ display:"flex", gap:6 }}>
-                      <button onClick={() => copyOrderText(order)}
-                        style={{ background:copied===order.id ? "#002a0f" : "#1a1500", border:`1px solid ${copied===order.id ? C.green : C.gold}50`, color:copied===order.id ? C.green : C.gold, padding:"4px 10px", borderRadius:8, fontSize:11, cursor:"pointer", fontFamily:"inherit", fontWeight:700, transition:"all 0.2s" }}>
-                        {copied===order.id ? "✅ Copied!" : "📋 Copy"}
-                      </button>
-                      <button onClick={() => deleteOrder(order.id)}
-                        style={{ background:"#1a0000", border:"1px solid rgba(220,38,38,0.3)", color:"#f87171", padding:"4px 10px", borderRadius:8, fontSize:11, cursor:"pointer", fontFamily:"inherit" }}>
-                        Delete
-                      </button>
+                    <div style={{ textAlign:"right" }}>
+                      {customerTotal > 0 && <div style={{ fontSize:18, fontWeight:900, color:C.gold }}>${customerTotal.toFixed(2)}</div>}
+                      <div style={{ fontSize:11, color:groupSt.color, marginTop:2, fontWeight:700 }}>{groupSt.icon} {groupSt.label}</div>
                     </div>
                   </div>
+
+                  {/* Individual orders */}
+                  {group.orders.map((order, idx) => {
+                    const st  = STATUS[order.status];
+                    const src = SOURCE[order.source];
+                    const product = PRODUCTS.find(p => p.id === order.item);
+                    const productLabel = product?.label || order.item;
+                    return (
+                      <div key={order.id} style={{ padding:"12px 16px", borderBottom: idx < group.orders.length - 1 ? `1px solid ${C.border}` : "none", background: idx % 2 === 1 ? "rgba(255,255,255,0.02)" : "transparent" }}>
+                        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+                          <div style={{ flex:1 }}>
+                            <div style={{ fontSize:14, fontWeight:700, color:C.orange }}>{productLabel}</div>
+                            <div style={{ color:C.muted, fontSize:13, marginTop:2 }}>
+                              <b style={{ color:C.text }}>×{order.qty}</b>
+                              {order.price > 0 && (
+                                <span>
+                                  <span style={{ color:C.muted }}> • ${(order.price * order.qty).toFixed(2)}</span>
+                                  {order.discount > 0 && <span style={{ color:C.red }}> −${Number(order.discount).toFixed(2)}</span>}
+                                  {order.total > 0 && <b style={{ color:C.gold }}> = ${Number(order.total).toFixed(2)}</b>}
+                                </span>
+                              )}
+                            </div>
+                            {order.note && <div style={{ color:C.muted, fontSize:12, marginTop:3 }}>📝 {order.note}</div>}
+                            {order.deliveryTime && (
+                              <div style={{ display:"inline-flex", alignItems:"center", gap:4, background:"#2a1500", border:`1px solid ${C.orange}40`, borderRadius:7, padding:"2px 8px", marginTop:5, fontSize:11, fontWeight:700, color:C.gold }}>
+                                🕐 {order.deliveryTime}
+                              </div>
+                            )}
+                            <div style={{ color:"rgba(255,255,255,0.2)", fontSize:11, marginTop:4 }}>{src?.icon} {src?.label}</div>
+                          </div>
+                          <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:5 }}>
+                            <span style={{ background:st.bg, color:st.color, padding:"3px 8px", borderRadius:16, fontSize:10, fontWeight:700, whiteSpace:"nowrap", border:`1px solid ${st.color}40` }}>{st.icon} {st.label}</span>
+                            <div style={{ display:"flex", gap:5 }}>
+                              <button onClick={() => copyOrderText(order)}
+                                style={{ background:copied===order.id ? "#002a0f" : "#1a1500", border:`1px solid ${copied===order.id ? C.green : C.gold}50`, color:copied===order.id ? C.green : C.gold, padding:"3px 8px", borderRadius:7, fontSize:10, cursor:"pointer", fontFamily:"inherit", fontWeight:700 }}>
+                                {copied===order.id ? "✅" : "📋"}
+                              </button>
+                              <button onClick={() => deleteOrder(order.id)}
+                                style={{ background:"#1a0000", border:"1px solid rgba(220,38,38,0.3)", color:"#f87171", padding:"3px 8px", borderRadius:7, fontSize:10, cursor:"pointer", fontFamily:"inherit" }}>
+                                🗑
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                        {/* Status buttons */}
+                        <div style={{ display:"flex", gap:5, marginTop:10, flexWrap:"wrap" }}>
+                          {Object.entries(STATUS).map(([key, s]) => (
+                            <button key={key} onClick={() => updateStatus(order.id, key)}
+                              style={{ background:order.status===key ? s.bg : "transparent", color:order.status===key ? s.color : C.muted, border:`1px solid ${order.status===key ? s.color : C.border}`, padding:"4px 10px", borderRadius:7, fontSize:10, fontWeight:600, cursor:"pointer", fontFamily:"inherit", transition:"all 0.15s" }}>
+                              {s.icon} {s.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-                <div style={{ display:"flex", gap:6, marginTop:12, flexWrap:"wrap" }}>
-                  {Object.entries(STATUS).map(([key, s]) => (
-                    <button key={key} onClick={() => updateStatus(order.id, key)}
-                      style={{ background:order.status===key ? s.bg : "transparent", color:order.status===key ? s.color : C.muted, border:`1px solid ${order.status===key ? s.color : C.border}`, padding:"5px 12px", borderRadius:8, fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit", transition:"all 0.15s" }}>
-                      {s.icon} {s.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
+              );
+            });
+          })()}
         </div>
       </div>
 
